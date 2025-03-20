@@ -13,16 +13,16 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         total_loss = 0.0
         correct, total = 0, 0
         
-        train_pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Training]")
+        train_pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Training]", leave=False)
         
         for input_embs, timestamps, timediff, targets in train_pbar:
             input_embs, timestamps, timediff, targets = input_embs.to(device), timestamps.to(device), timediff.to(device), targets.to(device)
             optimizer.zero_grad()
 
-            seq_len = input_embs.shape[1]
+            batch_size, seq_len = input_embs.shape[:2]
             logits, pred_timediff = model(input_embs[:,:seq_len-1], timediff[:,:seq_len-1])
             
-            loss = criterion(logits, targets) + mse(pred_timediff, timediff[:,seq_len,:])
+            loss = criterion(logits, targets) + mse(pred_timediff.reshape(batch_size), timediff[:,seq_len-1])
             loss.backward()
             optimizer.step()
             
@@ -44,17 +44,20 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             torch.save(model.state_dict(), "best_model.pth")
+            # torch.save(model.state_dict(), "/home/gos/Desktop/discord_bot/outputs/lstm_speaker/best_model.pth")
 
 def evaluate_model(model, val_loader, device='cpu'):
     model.eval()
     correct, total = 0, 0
     
     with torch.no_grad():
-        val_pbar = tqdm(val_loader, desc="Evaluating")
+        val_pbar = tqdm(val_loader, desc="Evaluating", leave=False)
         
-        for input_embs, timestamps, targets in val_pbar:
-            input_embs, timestamps, targets = input_embs.to(device), timestamps.to(device), targets.to(device)
-            logits = model(input_embs, timestamps)
+        for input_embs, timestamps, timediff, targets in val_pbar:
+            input_embs, timestamps, timediff, targets = input_embs.to(device), timestamps.to(device), timediff.to(device), targets.to(device)
+
+            batch_size, seq_len = input_embs.shape[:2]
+            logits, pred_timediff = model(input_embs[:,:seq_len-1], timediff[:,:seq_len-1])
             preds = logits.argmax(dim=-1)
             correct += (preds == targets).sum().item()
             total += targets.size(0)

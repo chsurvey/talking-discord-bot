@@ -23,10 +23,14 @@ class NextSpeakerModel(nn.Module):
         self.classifier = nn.Linear(hidden_dim, num_users)
         self.predict_timediff = nn.Linear(hidden_dim, 1)
     
+    def init_hidden(self, batch_size):
+        return (torch.zeros(self.lstm.num_layers, batch_size, self.hidden_dim),
+                torch.zeros(self.lstm.num_layers, batch_size, self.hidden_dim))
+    
     def forward(self, input_embs, timediff):
         batch_size, seq_len, emb_dim = input_embs.shape
         
-        t = timediff.view(-1, 1)
+        t = timediff.reshape(batch_size * seq_len, 1)
         time_embs = self.time_embedding(t)
         time_embs = time_embs.view(batch_size, seq_len, emb_dim)
         
@@ -38,3 +42,19 @@ class NextSpeakerModel(nn.Module):
         logits = self.classifier(last_hidden)
         pred_timediff = self.predict_timediff(last_hidden) 
         return logits, pred_timediff
+
+    def inference(self, input_embs, timediff, prev_hidden):
+        batch_size, seq_len, emb_dim = input_embs.shape
+        
+        t = timediff.reshape(batch_size * seq_len, 1)
+        time_embs = self.time_embedding(t)
+        time_embs = time_embs.view(batch_size, seq_len, emb_dim)
+        
+        x = input_embs + time_embs
+        
+        outputs, hidden_state = self.lstm(x, prev_hidden)
+        
+        last_hidden = hidden_state[0][-1]
+        logits = self.classifier(last_hidden)
+        pred_timediff = self.predict_timediff(last_hidden) 
+        return logits, pred_timediff, hidden_state

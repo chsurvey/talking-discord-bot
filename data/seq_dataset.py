@@ -43,9 +43,10 @@ class ConversationDataset(Dataset):
         sample = self.samples[idx]
         input_embs = torch.stack(sample['input_embs'], dim=0)
         input_timestamps = torch.tensor(sample['timestamps'], dtype=torch.float)
+        input_timediff = torch.tensor(sample['timediff'], dtype=torch.float)
         target_user_idx = torch.tensor(sample['target_user_idx'], dtype=torch.long)
         
-        return input_embs, input_timestamps, target_user_idx
+        return input_embs, input_timestamps, input_timediff, target_user_idx
 
 def collate_fn(batch):
     input_embs = torch.stack([item[0] for item in batch], dim=0)
