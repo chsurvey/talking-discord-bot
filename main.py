@@ -30,7 +30,7 @@ for item in data:
     if mid not in message_embedding_dict:
         message_embedding_dict[mid] = torch.randn(embedding_dim)
 
-sequence_length = 30
+sequence_length = 64
 full_dataset = ConversationDataset(data, message_embedding_dict, user2idx, sequence_length=sequence_length)
 
 # Train/Validation Split
@@ -48,8 +48,9 @@ model = NextSpeakerModel(embedding_dim, hidden_dim, num_users, num_layers)
 
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=3)
+train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, device, epochs=10)
 
 print("Training Complete. Best model saved as 'best_model.pth'.")

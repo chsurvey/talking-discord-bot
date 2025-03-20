@@ -89,7 +89,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # Load preprocessed data
-    data_file = "/home/gos/Desktop/discord_bot/data/preprocessed_data.pt"
+    data_file = "/home/gos/Desktop/discord_bot/data/db/preprocessed_data.pt"
     dataset = PreprocessedMessageDataset(data_file)
     
     # Train/Validation Split
@@ -131,7 +131,7 @@ def main():
     
     # Saving the Model
     today = datetime.now()
-    save_dir = f"./models/{today.year}{today.month}{today.day}{today.hour}{today.minute}"
+    save_dir = f"./outputs/discord_bert/{today.year}{today.month}{today.day}{today.hour}{today.minute}"
     os.makedirs(save_dir, exist_ok=True)
     model.save_pretrained(save_dir)
     print(f"Model saved to {save_dir}")

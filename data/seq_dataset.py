@@ -15,15 +15,16 @@ class ConversationDataset(Dataset):
         self.user2idx = user2idx
         self.seq_len = sequence_length
         self.samples = []
-        timestamps = [parse_date(item['time']).timestamp() for item in self.data]
+        timestamps = [parse_date(item['time']).timestamp()/(3600) for item in self.data] # make into hours
 
-        for i in range(len(data) - sequence_length):
+        for i in range(1, len(data) - sequence_length):
             input_indices = list(range(i, i + sequence_length))
             target_index = i + sequence_length
             
             input_msg_ids = [self.data[idx]['message_id'] for idx in input_indices]
             input_embs = [self.msg_emb_dict[m_id] for m_id in input_msg_ids]
             input_timestamps = [timestamps[idx] for idx in input_indices]
+            input_timediff = [timestamps[idx] - timestamps[idx-1] for idx in input_indices]
 
             target_user_id = self.data[target_index]['user_id']
             target_user_idx = user2idx[target_user_id]
@@ -31,6 +32,7 @@ class ConversationDataset(Dataset):
             self.samples.append({
                 'input_embs': input_embs,
                 'timestamps': input_timestamps,
+                'timediff': input_timediff,
                 'target_user_idx': target_user_idx
             })
     
@@ -48,5 +50,6 @@ class ConversationDataset(Dataset):
 def collate_fn(batch):
     input_embs = torch.stack([item[0] for item in batch], dim=0)
     timestamps = torch.stack([item[1] for item in batch], dim=0)
-    targets = torch.stack([item[2] for item in batch], dim=0)
-    return input_embs, timestamps, targets
+    timediff = torch.stack([item[2] for item in batch], dim=0)
+    targets = torch.stack([item[3] for item in batch], dim=0)
+    return input_embs, timestamps, timediff, targets
