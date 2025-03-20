@@ -17,7 +17,7 @@ with open('data/db/db_dump_일반.json', 'r', encoding='utf-8') as f:
 data.sort(key=lambda x: datetime.strptime(x['time'][:19], "%Y-%m-%d %H:%M:%S"))
 
 
-all_user_ids = list(set(item['user_id'] for item in data))
+all_user_ids = sorted(list(set(item['user_id'] for item in data)))
 user2idx = {uid: i for i, uid in enumerate(all_user_ids)}
 idx2user = {v: k for k, v in user2idx.items()}
 num_users = len(user2idx)
@@ -39,8 +39,8 @@ train_size = int(0.8 * len(full_dataset))
 val_size = len(full_dataset) - train_size
 train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
-train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True, collate_fn=collate_fn)
-val_loader = DataLoader(val_dataset, batch_size=256, shuffle=False, collate_fn=collate_fn)
+train_loader = DataLoader(train_dataset, batch_size=800, shuffle=True, collate_fn=collate_fn)
+val_loader = DataLoader(val_dataset, batch_size=800, shuffle=False, collate_fn=collate_fn)
 
 # 모델 초기화
 hidden_dim = 256

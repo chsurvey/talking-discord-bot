@@ -2,6 +2,9 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from tqdm import tqdm
+import os
+from datetime import datetime
+today = datetime.now()
 
 def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, device='cpu', epochs=3):
     model.to(device)
@@ -15,14 +18,15 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         
         train_pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Training]", leave=False)
         
-        for input_embs, timestamps, timediff, targets in train_pbar:
-            input_embs, timestamps, timediff, targets = input_embs.to(device), timestamps.to(device), timediff.to(device), targets.to(device)
+        for input_embs, timestamps, timediff, input_speaker, targets, target_timediff in train_pbar:
+            input_embs, timestamps, timediff, input_speaker, targets, target_timediff = input_embs.to(device), timestamps.to(device), timediff.to(device), \
+                                                                       input_speaker.to(device), targets.to(device), target_timediff.to(device)
             optimizer.zero_grad()
 
             batch_size, seq_len = input_embs.shape[:2]
-            logits, pred_timediff = model(input_embs[:,:seq_len-1], timediff[:,:seq_len-1])
+            logits, pred_timediff = model(input_embs, timediff, input_speaker)
             
-            loss = criterion(logits, targets) + mse(pred_timediff.reshape(batch_size), timediff[:,seq_len-1])
+            loss = criterion(logits, targets) + mse(pred_timediff.reshape(batch_size), target_timediff)
             loss.backward()
             optimizer.step()
             
@@ -43,7 +47,9 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            torch.save(model.state_dict(), "best_model.pth")
+            save_dir = f"./outputs/lstm_speaker/{today.year}{today.month}{today.day}{today.hour}{today.minute}/"
+            os.makedirs(save_dir, exist_ok=True)
+            torch.save(model.state_dict(), save_dir+"best_model.pth")
             # torch.save(model.state_dict(), "/home/gos/Desktop/discord_bot/outputs/lstm_speaker/best_model.pth")
 
 def evaluate_model(model, val_loader, device='cpu'):
@@ -53,11 +59,11 @@ def evaluate_model(model, val_loader, device='cpu'):
     with torch.no_grad():
         val_pbar = tqdm(val_loader, desc="Evaluating", leave=False)
         
-        for input_embs, timestamps, timediff, targets in val_pbar:
-            input_embs, timestamps, timediff, targets = input_embs.to(device), timestamps.to(device), timediff.to(device), targets.to(device)
+        for input_embs, timestamps, timediff, input_speaker, targets, target_timediff in val_pbar:
+            input_embs, timestamps, timediff, input_speaker, targets, target_timediff = input_embs.to(device), timestamps.to(device), timediff.to(device), \
+                                                                       input_speaker.to(device), targets.to(device), target_timediff.to(device)
 
-            batch_size, seq_len = input_embs.shape[:2]
-            logits, pred_timediff = model(input_embs[:,:seq_len-1], timediff[:,:seq_len-1])
+            logits, pred_timediff = model(input_embs, timediff, input_speaker)
             preds = logits.argmax(dim=-1)
             correct += (preds == targets).sum().item()
             total += targets.size(0)

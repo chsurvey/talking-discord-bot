@@ -4,7 +4,7 @@ from tqdm import tqdm
 import pickle
 
 # 1. 모델과 토크나이저 로드
-model_path = "/home/gos/Desktop/discord_bot/models/2025320139"
+model_path = "/home/gos/Desktop/discord_bot/outputs/discord_bert/20253201843"
 model = BertForSequenceClassification.from_pretrained(
     model_path,
     output_hidden_states=True  # hidden_states 반환 활성화

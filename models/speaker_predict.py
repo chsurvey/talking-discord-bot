@@ -6,9 +6,15 @@ class NextSpeakerModel(nn.Module):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
+        self.num_users = num_users
         
         self.time_embedding = nn.Sequential(
             nn.Linear(1, embedding_dim//2),
+            nn.ReLU(),
+            nn.Linear(embedding_dim//2, embedding_dim)
+        )
+        self.speaker_embedding = nn.Sequential(
+            nn.Linear(num_users, embedding_dim//2),
             nn.ReLU(),
             nn.Linear(embedding_dim//2, embedding_dim)
         )
@@ -22,19 +28,23 @@ class NextSpeakerModel(nn.Module):
         
         self.classifier = nn.Linear(hidden_dim, num_users)
         self.predict_timediff = nn.Linear(hidden_dim, 1)
-    
+
     def init_hidden(self, batch_size):
         return (torch.zeros(self.lstm.num_layers, batch_size, self.hidden_dim),
                 torch.zeros(self.lstm.num_layers, batch_size, self.hidden_dim))
     
-    def forward(self, input_embs, timediff):
+    def forward(self, input_embs, timediff, input_speaker):
         batch_size, seq_len, emb_dim = input_embs.shape
         
         t = timediff.reshape(batch_size * seq_len, 1)
         time_embs = self.time_embedding(t)
         time_embs = time_embs.view(batch_size, seq_len, emb_dim)
         
-        x = input_embs + time_embs
+        s = input_speaker.reshape(batch_size * seq_len, self.num_users)
+        spk_embs = self.speaker_embedding(s)
+        spk_embs = spk_embs.view(batch_size, seq_len, emb_dim)
+        
+        x = input_embs + time_embs + spk_embs
         
         outputs, (h_n, _) = self.lstm(x)
         
@@ -43,7 +53,7 @@ class NextSpeakerModel(nn.Module):
         pred_timediff = self.predict_timediff(last_hidden) 
         return logits, pred_timediff
 
-    def inference(self, input_embs, timediff, prev_hidden):
+    def inference(self, input_embs, timediff, input_speaker, prev_hidden):
         batch_size, seq_len, emb_dim = input_embs.shape
         
         t = timediff.reshape(batch_size * seq_len, 1)
